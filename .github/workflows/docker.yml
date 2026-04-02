@@ -5,6 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build-and-push:
@@ -46,10 +47,19 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
         
-    - name: Run tests
+    - name: Test Docker image
       run: |
         echo "Testing Docker image..."
         docker run --rm -d -p 5000:5000 mado87464/derangement-wifi:latest
         sleep 10
         curl -f http://localhost:5000 || exit 1
         echo "✅ Application is running correctly!"
+        
+    - name: Create deployment summary
+      run: |
+        echo "## 🐳 Docker Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Image**: mado87464/derangement-wifi" >> $GITHUB_STEP_SUMMARY
+        echo "- **Tags**: ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Platforms**: linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+        echo "- **Docker Hub**: https://hub.docker.com/r/mado87464/derangement-wifi" >> $GITHUB_STEP_SUMMARY
+        echo "- **Pull command**: \`docker pull mado87464/derangement-wifi:latest\`" >> $GITHUB_STEP_SUMMARY
