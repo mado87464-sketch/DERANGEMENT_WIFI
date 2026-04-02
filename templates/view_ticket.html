@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Ticket #{{ ticket.id }} - Support WiFi{% endblock %}
+
+{% block extra_css %}
+<style>
+    .message-agent {
+        background-color: #e3f2fd;
+        margin-left: 20%;
+        border-radius: 15px 15px 5px 15px;
+    }
+    .message-client {
+        background-color: #f3e5f5;
+        margin-right: 20%;
+        border-radius: 15px 15px 15px 5px;
+    }
+    .status-ouvert { background-color: #fff3cd; }
+    .status-en_cours { background-color: #cfe2ff; }
+    .status-resolu { background-color: #d1e7dd; }
+    .status-ferme { background-color: #f8d7da; }
+    .priority-high { border-left: 4px solid #dc3545; }
+    .priority-medium { border-left: 4px solid #ffc107; }
+    .priority-low { border-left: 4px solid #28a745; }
+    #messages-container {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3><i class="fas fa-ticket-alt"></i> Ticket #{{ ticket.id }}</h3>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Retour
+            </a>
+        </div>
+
+        <div class="card mb-4 priority-{{ ticket.priority }}">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="mb-0">{{ ticket.title }}</h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <span class="badge status-badge status-{{ ticket.status }} me-2">
+                            {{ ticket.status.replace('_', ' ').title() }}
+                        </span>
+                        <span class="badge bg-{{ 
+                            'danger' if ticket.priority == 'haute' else 
+                            'warning' if ticket.priority == 'moyenne' else 
+                            'success' 
+                        }}">
+                            {{ ticket.priority.title() }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong><i class="fas fa-user"></i> Client:</strong> {{ ticket.client.username }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong><i class="fas fa-envelope"></i> Email:</strong> {{ ticket.client.email }}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong><i class="fas fa-calendar"></i> Créé le:</strong> {{ ticket.created_at.strftime('%d/%m/%Y à %H:%M') }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong><i class="fas fa-clock"></i> Dernière mise à jour:</strong> {{ ticket.updated_at.strftime('%d/%m/%Y à %H:%M') }}
+                    </div>
+                </div>
+                {% if ticket.agent %}
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong><i class="fas fa-headset"></i> Agent assigné:</strong> {{ ticket.agent.username }}
+                        </div>
+                    </div>
+                {% endif %}
+                <hr>
+                <h6><i class="fas fa-file-alt"></i> Description du problème:</h6>
+                <p>{{ ticket.description }}</p>
+                
+                {% if current_user.user_type == 'agent' and ticket.status != 'ferme' %}
+                    <div class="mt-3">
+                        <label class="form-label"><strong>Mettre à jour le statut:</strong></label>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-info" 
+                                    onclick="updateTicketStatus('{{ ticket.id }}', 'ouvert')">
+                                <i class="fas fa-folder"></i> Ouvert
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" 
+                                    onclick="updateTicketStatus('{{ ticket.id }}', 'en_cours')">
+                                <i class="fas fa-play"></i> En cours
+                            </button>
+                            <button type="button" class="btn btn-outline-success" 
+                                    onclick="updateTicketStatus('{{ ticket.id }}', 'resolu')">
+                                <i class="fas fa-check"></i> Résolu
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" 
+                                    onclick="updateTicketStatus('{{ ticket.id }}', 'ferme')">
+                                <i class="fas fa-times"></i> Fermé
+                            </button>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-comments"></i> Messages</h5>
+            </div>
+            <div class="card-body">
+                <div id="messages-container">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="mb-3">
+                                <div class="message-{{ message.sender_type }} p-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong>
+                                            <i class="fas fa-{{ 'user' if message.sender_type == 'client' else 'headset' }}"></i>
+                                            {{ message.sender.username }}
+                                        </strong>
+                                        <small class="text-muted">
+                                            {{ message.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                        </small>
+                                    </div>
+                                    <p class="mb-0">{{ message.content }}</p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-comment-slash fa-2x mb-2"></i>
+                            <p>Aucun message pour l'instant</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                {% if ticket.status != 'ferme' %}
+                    <hr>
+                    <form id="message-form">
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">
+                            {{ form.content(class="form-control", rows="3", placeholder="Écrivez votre message...") }}
+                        </div>
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-lock"></i> Ce ticket est fermé. Vous ne pouvez plus ajouter de messages.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// WebSocket connection for real-time updates
+const socket = io();
+
+socket.on('connect', function() {
+    console.log('Connected to server');
+    socket.emit('join_ticket', {ticket_id: '{{ ticket.id }}' });
+});
+
+socket.on('new_message', function(data) {
+    if (data.ticket_id == '{{ ticket.id }}') {
+        addMessageToChat(data);
+    }
+});
+
+socket.on('status_updated', function(data) {
+    if (data.ticket_id == '{{ ticket.id }}') {
+        location.reload();
+    }
+});
+
+function addMessageToChat(message) {
+    const messagesContainer = document.getElementById('messages-container');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'mb-3';
+    const senderIcon = message.sender_type === 'client' ? 'user' : 'headset';
+    messageDiv.innerHTML = `
+        <div class="message-${message.sender_type} p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong>
+                    <i class="fas fa-${senderIcon}"></i>
+                    ${message.sender}
+                </strong>
+                <small class="text-muted">
+                    ${message.created_at}
+                </small>
+            </div>
+            <p class="mb-0">${message.content}</p>
+        </div>
+    `;
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+document.getElementById('message-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const content = formData.get('content');
+    
+    if (!content.trim()) {
+        return;
+    }
+    
+    fetch(`/ticket/{{ ticket.id }}/add_message`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `content=${encodeURIComponent(content)}&csrf_token=${formData.get('csrf_token')}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Erreur: ' + data.error);
+        } else {
+            // Clear the form
+            document.querySelector('textarea[name="content"]').value = '';
+            // Add message to chat (will also be received via WebSocket)
+            addMessageToChat(data);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de l\'envoi du message');
+    });
+});
+
+function updateTicketStatus(ticketId, newStatus) {
+    fetch(`/ticket/${ticketId}/update_status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Erreur: ' + data.error);
+        } else {
+            // Status will be updated via WebSocket
+            socket.emit('status_update', {ticket_id: ticketId, status: newStatus});
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de la mise à jour du statut');
+    });
+}
+</script>
+{% endblock %}

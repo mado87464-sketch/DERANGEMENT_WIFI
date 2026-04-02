@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Affecter Ticket - Support WiFi{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-user-plus"></i> Affecter le Ticket #{{ ticket.id }}</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Détails du ticket</h6>
+                    <p><strong>Titre:</strong> {{ ticket.title }}</p>
+                    <p><strong>Catégorie:</strong> {{ ticket.categorie.title() }}</p>
+                    <p><strong>Priorité:</strong> {{ ticket.priority.title() }}</p>
+                    <p><strong>Client:</strong> {{ ticket.client.username }}</p>
+                    <p><strong>Description:</strong> {{ ticket.description }}</p>
+                </div>
+
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.equipe_id.label(class="form-label") }}
+                        {{ form.equipe_id(class="form-select") }}
+                        {% if form.equipe_id.errors %}
+                            <div class="text-danger">
+                                {% for error in form.equipe_id.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            Seules les équipes spécialisées en {{ ticket.categorie }} sont affichées
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.agent_id.label(class="form-label") }}
+                        {{ form.agent_id(class="form-select") }}
+                        {% if form.agent_id.errors %}
+                            <div class="text-danger">
+                                {% for error in form.agent_id.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            Optionnel: vous pouvez affecter à un agent spécifique de l'équipe
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.delai_max_heures.label(class="form-label") }}
+                        {{ form.delai_max_heures(class="form-select") }}
+                        {% if form.delai_max_heures.errors %}
+                            <div class="text-danger">
+                                {% for error in form.delai_max_heures.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            Délai maximum avant alerte pour ce ticket
+                        </small>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Retour
+                        </a>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-lightbulb"></i> Recommandation</h6>
+            </div>
+            <div class="card-body">
+                <p class="small">Basé sur la catégorie <strong>{{ ticket.categorie }}</strong>, voici les équipes disponibles:</p>
+                <ul class="small">
+                    {% for equipe in equipes_disponibles %}
+                        <li>{{ equipe.nom }} - Spécialiste {{ equipe.specialite }}</li>
+                    {% endfor %}
+                </ul>
+                <div class="alert alert-warning mt-3">
+                    <small>
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        L'affectation automatique changera le statut du ticket à "En cours"
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

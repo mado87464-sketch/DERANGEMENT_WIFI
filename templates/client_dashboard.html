@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord Client - Support WiFi{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ticket-card {
+        transition: transform 0.2s;
+    }
+    .ticket-card:hover {
+        transform: translateY(-2px);
+    }
+    .status-ouvert { background-color: #fff3cd; }
+    .status-en_cours { background-color: #cfe2ff; }
+    .status-resolu { background-color: #d1e7dd; }
+    .status-ferme { background-color: #f8d7da; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-tachometer-alt"></i> Mon Tableau de Bord</h2>
+            <a href="{{ url_for('create_ticket') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Signaler une panne
+            </a>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">{{ tickets|length }}</h5>
+                        <p class="card-text">Total des tickets</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-warning">{{ tickets|selectattr('status', 'equalto', 'ouvert')|list|length }}</h5>
+                        <p class="card-text">Ouverts</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-info">{{ tickets|selectattr('status', 'equalto', 'en_cours')|list|length }}</h5>
+                        <p class="card-text">En cours</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">{{ tickets|selectattr('status', 'equalto', 'resolu')|list|length }}</h5>
+                        <p class="card-text">Résolus</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Mes Tickets</h5>
+            </div>
+            <div class="card-body">
+                {% if tickets %}
+                    <div class="row">
+                        {% for ticket in tickets %}
+                            <div class="col-lg-6 mb-3">
+                                <div class="card ticket-card priority-{{ ticket.priority }}">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">{{ ticket.title }}</h6>
+                                        <span class="badge status-badge status-{{ ticket.status }}">
+                                            {{ ticket.status.replace('_', ' ').title() }}
+                                        </span>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="card-text">{{ ticket.description[:100] }}{% if ticket.description|length > 100 %}...{% endif %}</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock"></i> {{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                            </small>
+                                            <div>
+                                                <span class="badge bg-{{ 
+                                                    'danger' if ticket.priority == 'haute' else 
+                                                    'warning' if ticket.priority == 'moyenne' else 
+                                                    'success' 
+                                                }}">
+                                                    {{ ticket.priority.title() }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <a href="{{ url_for('view_ticket', ticket_id=ticket.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i> Voir
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5>Aucun ticket</h5>
+                        <p class="text-muted">Vous n'avez pas encore créé de ticket de support.</p>
+                        <a href="{{ url_for('create_ticket') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Créer mon premier ticket
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

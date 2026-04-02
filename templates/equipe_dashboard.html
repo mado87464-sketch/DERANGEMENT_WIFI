@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord Équipe - Support WiFi{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-users"></i> Tableau de bord Équipe Technique</h2>
+            <div>
+                <span class="badge bg-info">Spécialité: {{ current_user.specialite }}</span>
+                <span class="badge bg-{{ 'success' if current_user.disponibilite else 'danger' }}">
+                    {{ 'Disponible' if current_user.disponibilite else 'Indisponible' }}
+                </span>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">{{ tickets|length }}</h5>
+                        <p class="card-text">Tickets affectés</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-warning">{{ tickets|selectattr('status', 'equalto', 'en_cours')|list|length }}</h5>
+                        <p class="card-text">En cours</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">{{ tickets|selectattr('status', 'equalto', 'resolu')|list|length }}</h5>
+                        <p class="card-text">Résolus</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-info">{{ tickets|selectattr('priority', 'equalto', 'haute')|list|length }}</h5>
+                        <p class="card-text">Haute priorité</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Mes Tickets Affectés</h5>
+            </div>
+            <div class="card-body">
+                {% if tickets %}
+                    <div class="row">
+                        {% for ticket in tickets %}
+                            <div class="col-lg-6 mb-3">
+                                <div class="card ticket-card priority-{{ ticket.priority }}">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">{{ ticket.title }}</h6>
+                                        <span class="badge status-badge status-{{ ticket.status }}">
+                                            {{ ticket.status.replace('_', ' ').title() }}
+                                        </span>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="card-text">{{ ticket.description[:100] }}{% if ticket.description|length > 100 %}...{% endif %}</p>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-user"></i> {{ ticket.client.username }}
+                                                </small>
+                                            </div>
+                                            <div class="col-6">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock"></i> {{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        {% if ticket.date_affectation %}
+                                            <div class="mt-2">
+                                                <small class="text-info">
+                                                    <i class="fas fa-calendar-check"></i> Affecté le {{ ticket.date_affectation.strftime('%d/%m/%Y %H:%M') }}
+                                                </small>
+                                            </div>
+                                        {% endif %}
+                                        <div class="d-flex justify-content-between align-items-center mt-2">
+                                            <div>
+                                                <span class="badge bg-{{ 
+                                                    'danger' if ticket.priority == 'haute' else 
+                                                    'warning' if ticket.priority == 'moyenne' else 
+                                                    'success' 
+                                                }}">
+                                                    {{ ticket.priority.title() }}
+                                                </span>
+                                                <span class="badge bg-secondary">
+                                                    {{ ticket.categorie.title() }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <a href="{{ url_for('view_ticket', ticket_id=ticket.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i> Voir
+                                        </a>
+                                        {% if ticket.status != 'resolu' %}
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-success" 
+                                                        onclick="updateTicketStatus('{{ ticket.id }}', 'resolu')">
+                                                    <i class="fas fa-check"></i> Résolu
+                                                </button>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5>Aucun ticket affecté</h5>
+                        <p class="text-muted">Aucun ticket n'a été affecté à votre équipe pour l'instant.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateTicketStatus(ticketId, newStatus) {
+    fetch(`/ticket/${ticketId}/update_status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Erreur: ' + data.error);
+        } else {
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de la mise à jour du statut');
+    });
+}
+</script>
+{% endblock %}

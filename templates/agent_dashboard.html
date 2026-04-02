@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord Agent - Support WiFi{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ticket-card {
+        transition: transform 0.2s;
+    }
+    .ticket-card:hover {
+        transform: translateY(-2px);
+    }
+    .status-ouvert { background-color: #fff3cd; }
+    .status-en_cours { background-color: #cfe2ff; }
+    .status-resolu { background-color: #d1e7dd; }
+    .status-ferme { background-color: #f8d7da; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-headset"></i> Tableau de Bord Agent</h2>
+            <button class="btn btn-outline-primary" onclick="refreshTickets()">
+                <i class="fas fa-sync-alt"></i> Actualiser
+            </button>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-2">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">{{ tickets|length }}</h5>
+                        <p class="card-text">Total</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-warning">{{ tickets|selectattr('status', 'equalto', 'ouvert')|list|length }}</h5>
+                        <p class="card-text">Ouverts</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-info">{{ tickets|selectattr('status', 'equalto', 'en_cours')|list|length }}</h5>
+                        <p class="card-text">En cours</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">{{ tickets|selectattr('status', 'equalto', 'resolu')|list|length }}</h5>
+                        <p class="card-text">Résolus</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-danger">{{ tickets|selectattr('priority', 'equalto', 'haute')|list|length }}</h5>
+                        <p class="card-text">Haute priorité</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-secondary">{{ tickets|selectattr('agent_id', 'equalto', None)|selectattr('status', 'in', ['ouvert', 'en_cours'])|list|length }}</h5>
+                        <p class="card-text">Non assignés</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Tous les Tickets</h5>
+            </div>
+            <div class="card-body">
+                {% if tickets %}
+                    <div class="row">
+                        {% for ticket in tickets %}
+                            <div class="col-lg-6 mb-3">
+                                <div class="card ticket-card priority-{{ ticket.priority }}">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">{{ ticket.title }}</h6>
+                                        <span class="badge status-badge status-{{ ticket.status }}">
+                                            {{ ticket.status.replace('_', ' ').title() }}
+                                        </span>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="card-text">{{ ticket.description[:100] }}{% if ticket.description|length > 100 %}...{% endif %}</p>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-user"></i> {{ ticket.client.username }}
+                                                </small>
+                                            </div>
+                                            <div class="col-6">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock"></i> {{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mt-2">
+                                            <div>
+                                                <span class="badge bg-{{ 
+                                                    'danger' if ticket.priority == 'haute' else 
+                                                    'warning' if ticket.priority == 'moyenne' else 
+                                                    'success' 
+                                                }}">
+                                                    {{ ticket.priority.title() }}
+                                                </span>
+                                                {% if ticket.agent %}
+                                                    <span class="badge bg-info">
+                                                        <i class="fas fa-user"></i> {{ ticket.agent.username }}
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <a href="{{ url_for('view_ticket', ticket_id=ticket.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i> Voir
+                                        </a>
+                                        {% if ticket.status != 'ferme' %}
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-info" 
+                                                        onclick="updateTicketStatus('{{ ticket.id }}', 'en_cours')">
+                                                    <i class="fas fa-play"></i> En cours
+                                                </button>
+                                                <button type="button" class="btn btn-outline-success" 
+                                                        onclick="updateTicketStatus('{{ ticket.id }}', 'resolu')">
+                                                    <i class="fas fa-check"></i> Résolu
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary" 
+                                                        onclick="updateTicketStatus('{{ ticket.id }}', 'ferme')">
+                                                    <i class="fas fa-times"></i> Fermer
+                                                </button>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5>Aucun ticket</h5>
+                        <p class="text-muted">Aucun ticket de support n'a été créé.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateTicketStatus(ticketId, newStatus) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/ticket/${ticketId}/update_status`;
+    
+    const csrfToken = document.querySelector('meta[name=csrf-token]');
+    if (csrfToken) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = csrfToken.getAttribute('content');
+        form.appendChild(csrfInput);
+    }
+    
+    const statusInput = document.createElement('input');
+    statusInput.type = 'hidden';
+    statusInput.name = 'status';
+    statusInput.value = newStatus;
+    form.appendChild(statusInput);
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function refreshTickets() {
+    location.reload();
+}
+</script>
+{% endblock %}

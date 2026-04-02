@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Délais Critiques - Support WiFi{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-exclamation-triangle"></i> Délais Critiques</h2>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Retour
+            </a>
+        </div>
+
+        <div class="alert alert-warning">
+            <h5><i class="fas fa-info-circle"></i> Information</h5>
+            <p class="mb-0">Cette page affiche les tickets qui dépassent les délais standards selon leur priorité :</p>
+            <ul class="mb-0">
+                <li><strong>Priorité Haute:</strong> 1 heure maximum</li>
+                <li><strong>Priorité Moyenne:</strong> 4 heures maximum</li>
+                <li><strong>Priorité Basse:</strong> 24 heures maximum</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-clock"></i> Tickets en Retard</h5>
+            </div>
+            <div class="card-body">
+                {% if tickets_critiques %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Ticket</th>
+                                    <th>Client</th>
+                                    <th>Priorité</th>
+                                    <th>Délai Max</th>
+                                    <th>Délai Actuel</th>
+                                    <th>Dépassement</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in tickets_critiques %}
+                                    <tr class="table-{{ 'danger' if item.depassement > 120 else 'warning' }}">
+                                        <td>
+                                            <a href="{{ url_for('view_ticket', ticket_id=item.ticket.id) }}">
+                                                #{{ item.ticket.id }} - {{ item.ticket.title[:30] }}...
+                                            </a>
+                                        </td>
+                                        <td>{{ item.ticket.client.username }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 
+                                                'danger' if item.ticket.priority == 'haute' else 
+                                                'warning' if item.ticket.priority == 'moyenne' else 
+                                                'secondary' 
+                                            }}">
+                                                {{ item.ticket.priority.title() }}
+                                            </span>
+                                        </td>
+                                        <td>{{ item.delai_max }} min</td>
+                                        <td>{{ item.delai_actuel }} min</td>
+                                        <td>
+                                            <span class="badge bg-danger">
+                                                +{{ item.depassement }} min
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{{ url_for('view_ticket', ticket_id=item.ticket.id) }}" 
+                                                   class="btn btn-outline-primary">
+                                                    <i class="fas fa-eye"></i> Voir
+                                                </a>
+                                                {% if not item.ticket.equipe_id %}
+                                                    <a href="{{ url_for('affecter_ticket', ticket_id=item.ticket.id) }}" 
+                                                       class="btn btn-outline-warning">
+                                                        <i class="fas fa-user-plus"></i> Affecter
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-4">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h4 class="text-danger">{{ tickets_critiques|length }}</h4>
+                                    <p class="card-text">Tickets en retard</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    {% set max_depassement = tickets_critiques|map(attribute='depassement')|max %}
+                                    <h4 class="text-warning">{{ max_depassement }} min</h4>
+                                    <p class="card-text">Plus grand dépassement</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    {% set moyen_depassement = (tickets_critiques|map(attribute='depassement')|sum / tickets_critiques|length)|round|int %}
+                                    <h4 class="text-info">{{ moyen_depassement }} min</h4>
+                                    <p class="card-text">Dépassement moyen</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <h5>Aucun ticket en retard</h5>
+                        <p class="text-muted">Tous les tickets respectent les délais standards. Excellent travail !</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
