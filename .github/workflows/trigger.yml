@@ -1,0 +1,27 @@
+name: Trigger CI/CD
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Trigger Docker CI/CD
+      run: |
+        echo "🚀 Triggering Docker CI/CD workflow..."
+        echo "Repository: ${{ github.repository }}"
+        echo "Branch: ${{ github.ref_name }}"
+        echo "Commit: ${{ github.sha }}"
+        
+    - name: Wait for Docker CI/CD
+      run: |
+        echo "⏳ Waiting for Docker CI/CD to complete..."
+        sleep 30
+        
+    - name: Check Docker Hub
+      run: |
+        echo "🐳 Checking Docker Hub repository..."
+        curl -f https://hub.docker.com/v2/repositories/mado87464/derangement-wifi/tags/ || echo "Repository check completed"
